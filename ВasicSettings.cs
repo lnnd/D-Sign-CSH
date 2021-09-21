@@ -51,22 +51,48 @@ namespace D_Sign
 
         public static int SetSetting(bool offlineMode)
         {
-            int err = 0;
-
-            IEUSignCP.Initialize();
-            
             IEUSignCP.SetUIMode(false);
+            IEUSignCP.SetModeSettings(offlineMode);
 
-            err = IEUSignCP.SetModeSettings(offlineMode);
+            // Proxy
+            bool    useProxy        = false;
+            bool    anonymous       = false;
+            string  address         = "";
+            string  port            = "";
+            string  user            = "";
+            string  password        = "";
+            bool    savePassword   = false;
+            IEUSignCP.SetProxySettings(useProxy, anonymous, address, port, user, password, savePassword);
+
+            // File store
+            bool checkCRLs = true;          // Признак необхідності використання СВС при визначенні статусу сертифіката
+            bool autoRefresh = true;        // Признак необхідності автоматичного виявлення змін у файловому сховищі при записі, модифікації чи видаленні сертифікатів та 
+            bool ownCRLsOnly = false;       // Признак необхідності використання СВС тільки власного ЦСК користувача
+            bool fullAndDeltaCRLs = false;  // Признак необхідності перевірки наявності двох діючих СВС – повного та часткового
+            bool autoDownloadCRLs = true;   // Признак необхідності автоматичного завантаження СВС
+            bool saveLoadedCerts = true;    // Признак необхідності автоматичного збереження сертифікатів отриманих з LDAP-сервера чи за протоколом OCSP у файлове сховище
+            int expireTime = 0;             // Час зберігання стану перевіреного сертифіката
+            IEUSignCP.SetFileStoreSettings(mainFolderPath, checkCRLs, autoRefresh, ownCRLsOnly, fullAndDeltaCRLs, autoDownloadCRLs, saveLoadedCerts, expireTime);
+
+            // CMP
+            bool useCMP = true;
+            string addressCMP = "http://acsk.privatbank.ua/services/cmp/";
+            string portCMP = "80";
+            string commonName = "";
+            IEUSignCP.SetCMPSettings(useCMP, addressCMP, portCMP, commonName);
+
+            // TCP
+            bool getStamps = true;
+            string addressTCP = "http://acsk.privatbank.ua/services/tsp/";
+            string portTCP = "80";
+            IEUSignCP.SetTSPSettings(getStamps, addressTCP, portTCP);
+            
+            IEUSignCP.Initialize();
 
 
 
 
-
-
-
-
-            return err;
+            return 0;
 
         }
     }

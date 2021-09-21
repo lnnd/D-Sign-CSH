@@ -12,12 +12,12 @@ namespace D_Sign
         {
 
             ВasicSettings.checkMainFolder(mainFolderPath);
-            int error = ВasicSettings.SetSetting(offline);
+            ВasicSettings.SetSetting(offline);
 
             
              
 
-            return error;
+            return 0;
         }
 
         
