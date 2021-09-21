@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B38FF4AB-3824-4AD1-8A0A-55B55F96B1A2}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>D_Sign</RootNamespace>
+    <AssemblyName>D-Sign</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="InitClass.cs" />
+    <Compile Include="Modules\EUSignCP.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ВasicSettings.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Modules\32\CAConnectors.dll" />
+    <Content Include="Modules\32\CAGUI.dll" />
+    <Content Include="Modules\32\CSPBase.dll" />
+    <Content Include="Modules\32\CSPExtension.dll" />
+    <Content Include="Modules\32\CSPIBase.dll" />
+    <Content Include="Modules\32\DSTU4145CacheNB.cap" />
+    <Content Include="Modules\32\DSTU4145CachePB.cap" />
+    <Content Include="Modules\32\EPCP.dll" />
+    <Content Include="Modules\32\EUSignCP.dll" />
+    <Content Include="Modules\32\EUSignTestCS.exe" />
+    <Content Include="Modules\32\ISCP.dll" />
+    <Content Include="Modules\32\KM.dll" />
+    <Content Include="Modules\32\KM.EKeyAlmaz1C.dll" />
+    <Content Include="Modules\32\KM.EKeyCrystal1.dll" />
+    <Content Include="Modules\32\KM.FileSystem.dll" />
+    <Content Include="Modules\32\KM.IDCard.dll" />
+    <Content Include="Modules\32\KM.NCMGryada301.dll" />
+    <Content Include="Modules\32\KM.PKCS11.dll" />
+    <Content Include="Modules\32\KM.TCTEllipseSCard.dll" />
+    <Content Include="Modules\32\LDAPClient.dll" />
+    <Content Include="Modules\32\NCHostCP.dll" />
+    <Content Include="Modules\32\NCMGryada301.dll" />
+    <Content Include="Modules\32\PKCS11.EKeyAlmaz1C.dll" />
+    <Content Include="Modules\32\PKCS11.EKeyCrystal1.dll" />
+    <Content Include="Modules\32\PKCS11.NCMGryada301.dll" />
+    <Content Include="Modules\32\PKIFormats.dll" />
+    <Content Include="Modules\32\RF.dll" />
+    <Content Include="Modules\64\CAConnectors.dll" />
+    <Content Include="Modules\64\CAGUI.dll" />
+    <Content Include="Modules\64\CSPBase.dll" />
+    <Content Include="Modules\64\CSPExtension.dll" />
+    <Content Include="Modules\64\CSPIBase.dll" />
+    <Content Include="Modules\64\EUSignCP.dll" />
+    <Content Include="Modules\64\EUSignTestCS.exe" />
+    <Content Include="Modules\64\KM.dll" />
+    <Content Include="Modules\64\KM.EKeyAlmaz1C.dll" />
+    <Content Include="Modules\64\KM.EKeyCrystal1.dll" />
+    <Content Include="Modules\64\KM.FileSystem.dll" />
+    <Content Include="Modules\64\KM.NCMGryada301.dll" />
+    <Content Include="Modules\64\KM.PKCS11.dll" />
+    <Content Include="Modules\64\KM.TCTEllipseSCard.dll" />
+    <Content Include="Modules\64\LDAPClient.dll" />
+    <Content Include="Modules\64\NCHostCP.dll" />
+    <Content Include="Modules\64\NCMGryada301.dll" />
+    <Content Include="Modules\64\PKCS11.EKeyAlmaz1C.dll" />
+    <Content Include="Modules\64\PKCS11.EKeyCrystal1.dll" />
+    <Content Include="Modules\64\PKCS11.NCMGryada301.dll" />
+    <Content Include="Modules\64\PKIFormats.dll" />
+    <Content Include="Modules\64\RF.dll" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
