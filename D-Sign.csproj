@@ -100,6 +100,7 @@
     <Content Include="Modules\32\KM.dll" />
     <Content Include="Modules\32\KM.EKeyAlmaz1C.dll" />
     <Content Include="Modules\32\KM.EKeyCrystal1.dll" />
+    <Content Include="Modules\32\KM.EPassport.dll" />
     <Content Include="Modules\32\KM.FileSystem.dll" />
     <Content Include="Modules\32\KM.IDCard.dll" />
     <Content Include="Modules\32\KM.NCMGryada301.dll" />
@@ -118,12 +119,16 @@
     <Content Include="Modules\64\CSPBase.dll" />
     <Content Include="Modules\64\CSPExtension.dll" />
     <Content Include="Modules\64\CSPIBase.dll" />
+    <Content Include="Modules\64\EPCP.dll" />
     <Content Include="Modules\64\EUSignCP.dll" />
     <Content Include="Modules\64\EUSignTestCS.exe" />
+    <Content Include="Modules\64\ISCP.dll" />
     <Content Include="Modules\64\KM.dll" />
     <Content Include="Modules\64\KM.EKeyAlmaz1C.dll" />
     <Content Include="Modules\64\KM.EKeyCrystal1.dll" />
+    <Content Include="Modules\64\KM.EPassport.dll" />
     <Content Include="Modules\64\KM.FileSystem.dll" />
+    <Content Include="Modules\64\KM.IDCard.dll" />
     <Content Include="Modules\64\KM.NCMGryada301.dll" />
     <Content Include="Modules\64\KM.PKCS11.dll" />
     <Content Include="Modules\64\KM.TCTEllipseSCard.dll" />

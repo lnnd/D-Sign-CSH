@@ -1,7 +1,7 @@
 ﻿//=============================================================================
 
 /*__BEGIN_MONO_CODE__
-#if (__IOS__ || __ANDROID__ || __LINUX__)
+#if (__IOS__ || __ANDROID__ || __LINUX__ || __MACOS__)
 #define XAMARIN_SDK
 #endif
 __END_MONO_CODE__*/
@@ -139,6 +139,8 @@ __END_MONO_CODE__*/
 		public const int EU_CR_INFO_VERSION_3 = 3;
 		public const int EU_CR_INFO_VERSION = 4;
 
+		public const int EU_SS_SIGN_HASH_RESULT_VERSION = 1;
+
 		public const int EU_KEY_MEDIA_DEVICE_INFO_VERSION = 1;
 
 		public const int EU_CERT_KEY_TYPE_UNKNOWN = 0;
@@ -206,6 +208,7 @@ __END_MONO_CODE__*/
 		public const string EU_CHECK_PRIVATE_KEY_CONTEXT_PARAMETER = "CheckPrivateKey";
 		public const string EU_RESOLVE_OIDS_CONTEXT_PARAMETER = "ResolveOIDs";
 		public const string EU_EXPORATABLE_CONTEXT_CONTEXT_PARAMETER = "ExportableContext";
+		public const string EU_USE_COUPLE_PRIVATE_KEY_CONTEXT_PARAMETER = "UseCouplePrivateKey";
 
 		public const int EU_RECIPIENT_APPEND_TYPE_BY_ISSUER_SERIAL = 1;
 		public const int EU_RECIPIENT_APPEND_TYPE_BY_KEY_ID = 2;
@@ -219,6 +222,8 @@ __END_MONO_CODE__*/
 		public const int EU_CTX_HASH_ALGO_SHA160 = 2;
 		public const int EU_CTX_HASH_ALGO_SHA224 = 3;
 		public const int EU_CTX_HASH_ALGO_SHA256 = 4;
+		public const int EU_CTX_HASH_ALGO_SHA384 = 5;
+		public const int EU_CTX_HASH_ALGO_SHA512 = 6;
 
 		public const int EU_CTX_SIGN_ALGO_UNKNOWN = 0;
 		public const int EU_CTX_SIGN_ALGO_DSTU4145_WITH_GOST34311 = 1;
@@ -269,6 +274,8 @@ __END_MONO_CODE__*/
 		public const string EU_SIGN_UNSIGNED_ATTRIBUTE_REVOCATION_VALUES = "1.2.840.113549.1.9.16.2.24";
 		public const string EU_SIGN_UNSIGNED_ATTRIBUTE_CERTIFICATE_REFERENCES = "1.2.840.113549.1.9.16.2.21";
 		public const string EU_SIGN_UNSIGNED_ATTRIBUTE_CERTIFICATE_VALUES = "1.2.840.113549.1.9.16.2.23";
+
+		public const int EU_DEV_CTX_IDCARD_EID_DATA_ID_MASK = 0x80;
 
 		public enum EU_SUBJECT_TYPE
 		{
@@ -380,6 +387,8 @@ __END_MONO_CODE__*/
 			DG14 = 0x0E,
 			DG15 = 0x0F,
 			DG16 = 0x10,
+			DG17 = 0x11,
+			DG18 = 0x12,
 
 			SOD = 0x1D,
 			COM = 0x1E,
@@ -391,6 +400,23 @@ __END_MONO_CODE__*/
 			DG36 = 0x24,
 			DG37 = 0x25,
 			DG38 = 0x26
+		};
+
+		public enum EU_DEV_CTX_IDCARD_TERMINAL_TYPE
+		{
+			UNDEFINED_TERMINAL = 0x00,
+			AUTHENTICATION_TERMINAL = 0x01,
+			SIGNATURE_TERMINAL = 0x02,
+			INSPECTION_TERMINAL = 0x03
+		};
+
+		public enum EU_DEV_CTX_IDCARD_PASSWORD_TYPE
+		{
+			UNDEFINED = 0x00,
+			MRZ = 0x01,
+			CAN = 0x02,
+			PIN = 0x03,
+			PUK = 0x04
 		};
 
 		#endregion
@@ -1568,6 +1594,42 @@ __END_MONO_CODE__*/
 			}
 		};
 
+		public struct EU_SS_SIGN_HASH_RESULT
+		{
+			public int version;
+
+			public int error;
+			public string hash;
+			public string signature;
+			public int statusCode;
+			public string status;
+
+			public EU_SS_SIGN_HASH_RESULT(IntPtr intResult)
+			{
+				try
+				{
+					IntPtr curPtr = intResult;
+
+					curPtr = EUMarshal.ReadDWORD(curPtr, out version);
+
+					curPtr = EUMarshal.ReadDWORD(curPtr, out error);
+					curPtr = EUMarshal.ReadString(curPtr, out hash);
+					curPtr = EUMarshal.ReadString(curPtr, out signature);
+					curPtr = EUMarshal.ReadDWORD(curPtr, out statusCode);
+					curPtr = EUMarshal.ReadString(curPtr, out status);
+				}
+				catch (Exception)
+				{
+					this.version = 0;
+					this.error = EU_ERROR_UNKNOWN;
+					this.hash = "";
+					this.signature = "";
+					this.statusCode = 0;
+					this.status = "";
+				}
+			}
+		};
+
 		#endregion
 
 		#region EUSignCP: Private section
@@ -2162,6 +2224,19 @@ __END_MONO_CODE__*/
 				}
 			}
 
+			public bool IsEmpty()
+			{
+				if (_intDataPtr == IntPtr.Zero)
+				{
+					throw new EUSignCPException(
+						IEUSignCP.EU_ERROR_BAD_PARAMETER);
+				}
+
+				IntPtr intPtr = Marshal.ReadIntPtr(_intDataPtr);
+
+				return intPtr == IntPtr.Zero;
+			}
+
 			public byte[] GetBinaryData(bool freeData)
 			{
 				if (_intDataPtr == IntPtr.Zero ||
@@ -2480,6 +2555,68 @@ __END_MONO_CODE__*/
 				return GetCertsInfoEx(true);
 			}
 
+			public EU_SS_SIGN_HASH_RESULT[] GetSSSignHashResults(
+				bool freeData, int count)
+			{
+				if (_intDataPtr == IntPtr.Zero)
+				{
+					throw new EUSignCPException(
+						IEUSignCP.EU_ERROR_BAD_PARAMETER);
+				}
+
+				EU_SS_SIGN_HASH_RESULT[] signResults;
+				IntPtr signResultsPtr = IntPtr.Zero;
+
+				try
+				{
+					IntPtr curPtr;
+					IntPtr resultPtr;
+
+					signResultsPtr = Marshal.ReadIntPtr(_intDataPtr);
+					curPtr = signResultsPtr;
+					signResults = new EU_SS_SIGN_HASH_RESULT[count];
+
+					for (int i = 0; i < count; i++)
+					{
+						resultPtr = Marshal.ReadIntPtr(curPtr);
+						signResults[i] = new EU_SS_SIGN_HASH_RESULT(resultPtr);
+						curPtr = (IntPtr)(curPtr.ToInt64() + PTR_SIZE);
+					}
+
+					if (freeData)
+					{
+						EUSServerClientFreeSignHashesResults(
+							signResultsPtr, (DWORD) count);
+						FreeData();
+					}
+
+					return signResults;
+				}
+				catch (Exception)
+				{
+					try
+					{
+						if (signResultsPtr != IntPtr.Zero)
+						{
+							EUSServerClientFreeSignHashesResults(
+								signResultsPtr, (DWORD) count);
+						}
+					}
+					catch (Exception)
+					{
+
+					}
+
+					throw new EUSignCPException(
+						IEUSignCP.EU_ERROR_MEMORY_ALLOCATION);
+				}
+			}
+
+			public EU_SS_SIGN_HASH_RESULT[] GetSSSignHashResults(int count)
+			{
+				return GetSSSignHashResults(true, count);
+			}
+
 			public void FreeData()
 			{
 				try
@@ -2737,6 +2874,9 @@ __END_MONO_CODE__*/
 #elif (__ANDROID__ || __LINUX__)
 		private const string EU_LIBRARY_NAME = "euscp.so";
 		private const string OSI_LIBRARY_NAME = "libosi.so";
+#elif (__MACOS__)
+		private const string EU_LIBRARY_NAME = "euscp.dylib";
+		private const string OSI_LIBRARY_NAME = "osi.dylib";
 #else
 __END_MONO_CODE__*/
 		private const string EU_LIBRARY_NAME = "EUSignCP.dll";
@@ -2786,7 +2926,7 @@ __END_MONO_CODE__*/
 __END_MONO_CODE__*/
 
 /*__BEGIN_MONO_CODE__
-#if __LINUX__
+#if (__LINUX__ || __MACOS__)
 		[DllImport(OSI_LIBRARY_NAME)]
 		private static extern int MultiByteToWideChar(
 			uint CodePage, DWORD dwFlags, IntPtr lpMultiByteStr,
@@ -2854,7 +2994,7 @@ __END_MONO_CODE__*/
 					wStr.Dispose();
 			}
 		}
-#endif //__LINUX__
+#endif //__LINUX__ || __MACOS__
 __END_MONO_CODE__*/
 
 		private static string PtrToStringAnsi(IntPtr strPtr)
@@ -2863,7 +3003,7 @@ __END_MONO_CODE__*/
 			{
 				string encoding = "windows-1251";
 /*__BEGIN_MONO_CODE__
-#if __LINUX__
+#if (__LINUX__ || __MACOS__)
 				IntPtr _tmpPtr = IntPtr.Zero;
 
 				if (!MultiByteToMultiByte(
@@ -2875,7 +3015,7 @@ __END_MONO_CODE__*/
 
 				strPtr = _tmpPtr;
 				encoding = "utf-8";
-#endif // __LINUX__
+#endif // __LINUX__ || __MACOS__
 __END_MONO_CODE__*/
 				long lPointer = strPtr.ToInt64();
 				while (Marshal.ReadByte((IntPtr)lPointer) != 0)
@@ -2890,9 +3030,9 @@ __END_MONO_CODE__*/
 
 				Marshal.Copy(strPtr, strArray, 0, count);
 /*__BEGIN_MONO_CODE__
-#if __LINUX__
+#if (__LINUX__ || __MACOS__)
 				Marshal.FreeHGlobal(strPtr);
-#endif // __LINUX__
+#endif // __LINUX__ || __MACOS__
 __END_MONO_CODE__*/
 
 				return System.Text.Encoding.GetEncoding(encoding).GetString(strArray);
@@ -2909,9 +3049,9 @@ __END_MONO_CODE__*/
 			{
 				string encoding = "windows-1251";
 /*__BEGIN_MONO_CODE__
-#if __LINUX__
+#if (__LINUX__ || __MACOS__)
 				encoding = "utf-8";
-#endif // __LINUX__
+#endif // __LINUX__ || __MACOS__
 __END_MONO_CODE__*/
 				byte[] strArray = System.Text.Encoding.GetEncoding(encoding).GetBytes(str);
 
@@ -2924,7 +3064,7 @@ __END_MONO_CODE__*/
 					(IntPtr)(strPtr.ToInt64() + strArray.Length), 0);
 
 /*__BEGIN_MONO_CODE__
-#if __LINUX__
+#if (__LINUX__ || __MACOS__)
 				IntPtr _tmpPtr = IntPtr.Zero;
 
 				if (!MultiByteToMultiByte(
@@ -2938,7 +3078,7 @@ __END_MONO_CODE__*/
 				Marshal.FreeHGlobal(strPtr);
 
 				strPtr = _tmpPtr;
-#endif // __LINUX__
+#endif // __LINUX__ || __MACOS__
 __END_MONO_CODE__*/
 
 				return strPtr;
@@ -4919,6 +5059,115 @@ __END_MONO_CODE__*/
 			IntPtr UAKEPCertificate, IntPtr UAKEPCertificateLength,
 			IntPtr internationalCertificate, IntPtr internationalCertificateLength,
 			IntPtr ECDSACertificate, IntPtr ECDSACertificateLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern void EUCtxFreeCoupleSign(
+			IntPtr signContext);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxClientCreateCoupleSignStep1(
+			IntPtr privateKeyContext, DWORD signAlgo, 
+			IntPtr clientData, IntPtr clientDataLength, IntPtr signContext);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxServerCreateCoupleSignStep1(
+			IntPtr privateKeyContext, DWORD signAlgo, IntPtr hash, DWORD hashLength,
+			IntPtr clientData, DWORD clientDataLength,
+			IntPtr serverData, IntPtr serverDataLength, IntPtr signContext);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxClientCreateCoupleSignStep2(
+			IntPtr signContext, IntPtr serverData, DWORD serverDataLength,
+			IntPtr clientData, IntPtr clientDataLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxServerCreateCoupleSignStep2(
+			IntPtr signContext, IntPtr clientData, DWORD clientDataLength,
+			IntPtr signValue, IntPtr signValueLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCreateCoupleCRBegin(
+			IntPtr clientRequest, DWORD clientRequestLength,
+			IntPtr serverRequest, DWORD serverRequestLength,
+			IntPtr request, IntPtr requestLength,
+			IntPtr hashAttrs, IntPtr hashAttrsLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCreateCREnd(
+			IntPtr unsignedRequest, DWORD unsignedRequestLength,
+			IntPtr signature, DWORD signatureLength,
+			IntPtr request, IntPtr requestLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCreateSignerEx(
+			IntPtr hashString, IntPtr hashBinary, DWORD hashBinaryLength,
+			BOOL noContentTimeStamp, DWORD signType,
+			IntPtr signerString, IntPtr signerBinary, IntPtr signerBinaryLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxCreateSignerEx(
+			IntPtr privateKeyContext, DWORD signAlgo,
+			IntPtr hashBinary, DWORD hashLength,
+			BOOL noContentTimeStamp, DWORD signType,
+			IntPtr signerBinary, IntPtr signerBinaryLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUSServerClientSignHashAsync(
+			IntPtr serverAddress, IntPtr serverPort, IntPtr clientID,
+			IntPtr originatorDescription, IntPtr hashDescription,
+			IntPtr hashString, IntPtr hashBinary, DWORD hashBinaryLength,
+			IntPtr signAlgorithmName, IntPtr operationID);
+	
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUSServerClientCheckSignHashStatus(
+			IntPtr serverAddress, IntPtr serverPort, IntPtr clientID,
+			IntPtr operationID, IntPtr signString,
+			IntPtr signBinary, IntPtr signBinaryLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUSServerClientSignHashesAsync(
+			IntPtr serverAddress, IntPtr serverPort, IntPtr clientID,
+			IntPtr originatorDescription, IntPtr operationDescription,
+			IntPtr hashesDescription, IntPtr hashesString, 
+			DWORD hashesBinaryCount, 
+			IntPtr hashesBinary, IntPtr hashesBinaryLength,
+			IntPtr signAlgorithmName, IntPtr operationID);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUSServerClientCheckSignHashesStatus(
+			IntPtr serverAddress, IntPtr serverPort, IntPtr clientID,
+			IntPtr operationID, IntPtr signResults, IntPtr signResultsCount);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern void EUSServerClientFreeSignHashesResults(
+			IntPtr signResults, DWORD signResultsCount);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUDevCtxOpenIDCardEx(
+			IntPtr typeDescription, IntPtr deviceDescription,
+			IntPtr password, DWORD passwordType,
+			DWORD passwordVersion, DWORD terminalType,
+			IntPtr deviceContext);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUDevCtxActivateIDCardESign(
+			IntPtr deviceContext);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUDevCtxGetIDCardVersion(
+			IntPtr deviceContext, IntPtr version);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUDevCtxGetIDCardVersionFromDevice(
+			IntPtr typeDescription, IntPtr deviceDescription, IntPtr version);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxRawSignData(IntPtr privateKeyContext,
+			IntPtr data, DWORD dataLength, IntPtr sign, IntPtr signLength);
+
+		[DllImport(EU_LIBRARY_NAME)]
+		private static extern DWORD EUCtxRawSignHash(IntPtr privateKeyContext,
+			IntPtr hash, DWORD hashLength, IntPtr sign, IntPtr signLength);
 
 		#endregion
 
@@ -8543,6 +8792,107 @@ __END_MONO_CODE__*/
 					hashStringPtr.Dispose();
 				if (hashBinaryPtr != null)
 					hashBinaryPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _CreateCoupleCRBegin(
+			byte[] clientRequest, byte[] serverRequest,
+			out byte[] request, out byte[] hashAttrs)
+		{
+			EUMarshal clientRequestPtr = null;
+			EUMarshal serverRequestPtr = null;
+			EUMarshal requestPtr = null;
+			EUMarshal hashAttrsPtr = null;
+
+			request = null;
+			hashAttrs = null;
+
+			try
+			{
+				int error;
+				clientRequestPtr = new EUMarshal(clientRequest);
+				serverRequestPtr = new EUMarshal(serverRequest);
+				requestPtr = new EUMarshal(true);
+				hashAttrsPtr = new EUMarshal(true);
+
+				error = (int)EUCreateCoupleCRBegin(
+					clientRequestPtr.DataPtr, clientRequestPtr.DataLength,
+					serverRequestPtr.DataPtr, serverRequestPtr.DataLength,
+					requestPtr.DataPtr, requestPtr.BinaryDataLengthPtr,
+					hashAttrsPtr.DataPtr, hashAttrsPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				request = requestPtr.GetBinaryData();
+				hashAttrs = hashAttrsPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (clientRequestPtr != null)
+					clientRequestPtr.Dispose();
+				if (serverRequestPtr != null)
+					serverRequestPtr.Dispose();
+				if (requestPtr != null)
+					requestPtr.Dispose();
+				if (hashAttrsPtr != null)
+					hashAttrsPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _CreateCREnd(
+			byte[] unsignedRequest, byte[] signature,
+			out byte[] request)
+		{
+			EUMarshal unsignedRequestPtr = null;
+			EUMarshal signaturePtr = null;
+			EUMarshal requestPtr = null;
+
+			request = null;
+
+			try
+			{
+				int error;
+				unsignedRequestPtr = new EUMarshal(unsignedRequest);
+				signaturePtr = new EUMarshal(signature);
+				requestPtr = new EUMarshal(true);
+
+				error = (int)EUCreateCREnd(
+					unsignedRequestPtr.DataPtr, unsignedRequestPtr.DataLength,
+					signaturePtr.DataPtr, signaturePtr.DataLength,
+					requestPtr.DataPtr, requestPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				request = requestPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (unsignedRequestPtr != null)
+					unsignedRequestPtr.Dispose();
+				if (signaturePtr != null)
+					signaturePtr.Dispose();
+				if (requestPtr != null)
+					requestPtr.Dispose();
 			}
 
 			return EU_ERROR_NONE;
@@ -15784,6 +16134,71 @@ __END_MONO_CODE__*/
 			return EU_ERROR_NONE;
 		}
 
+		private static int _CreateSignerEx(
+			string hashString, byte[] hashBinary,
+			bool noContentTimeStamp, int signType,
+			ref string signerString, ref byte[] signerBinary)
+		{
+			EUMarshal hashStringPtr = null;
+			EUMarshal hashBinaryPtr = null;
+			EUMarshal signerStringPtr = null;
+			EUMarshal signerBinaryPtr = null;
+
+			try
+			{
+				int error;
+				hashStringPtr = new EUMarshal();
+				hashBinaryPtr = new EUMarshal();
+
+				signerStringPtr = new EUMarshal();
+				signerBinaryPtr = new EUMarshal();
+
+				if (hashString != null)
+					hashStringPtr = new EUMarshal(hashString);
+				else if (hashBinary != null)
+					hashBinaryPtr = new EUMarshal(hashBinary);
+
+				if (signerString != null)
+					signerStringPtr = new EUMarshal(false);
+				else if (signerBinary != null)
+					signerBinaryPtr = new EUMarshal(true);
+
+				error = (int)EUCreateSignerEx(hashStringPtr.DataPtr,
+					hashBinaryPtr.DataPtr, hashBinaryPtr.DataLength,
+					noContentTimeStamp ? 1 : 0, (DWORD) signType,
+					signerStringPtr.DataPtr, signerBinaryPtr.DataPtr,
+					signerBinaryPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				if (signerString != null)
+					signerString = signerStringPtr.GetStringData();
+				else if (signerBinary != null)
+					signerBinary = signerBinaryPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (hashStringPtr != null)
+					hashStringPtr.Dispose();
+				if (hashBinaryPtr != null)
+					hashBinaryPtr.Dispose();
+				if (signerStringPtr != null)
+					signerStringPtr.Dispose();
+				if (signerBinaryPtr != null)
+					signerBinaryPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
 		private static int _AppendSigner(string signerString,
 			byte[] signerBinary, byte[] certificate,
 			string previousSignString, byte[] previousSignBinary,
@@ -17095,6 +17510,108 @@ __END_MONO_CODE__*/
 			return EU_ERROR_NONE;
 		}
 
+		private static int _CtxRawSignHash(
+			IntPtr privateKeyContext,
+			string hashString, byte[] hashBinary,
+			out byte[] sign)
+		{
+			EUMarshal hashPtr = null;
+			EUMarshal signPtr = null;
+
+			sign = null;
+
+			try
+			{
+				int error;
+
+				if (hashString != null)
+				{
+					error = BASE64Decode(hashString, out hashBinary);
+					if (error != EU_ERROR_NONE)
+						return error;
+				}
+
+				hashPtr = new EUMarshal(hashBinary);
+				signPtr = new EUMarshal(
+					true, privateKeyContext);
+
+				error = (int) EUCtxRawSignHash(privateKeyContext,
+					hashPtr.DataPtr, hashPtr.DataLength,
+					signPtr.DataPtr, signPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				sign = signPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (hashPtr != null)
+					hashPtr.Dispose();
+				if (signPtr != null)
+					signPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _CtxRawSignData(
+			IntPtr privateKeyContext,
+			string dataString, byte[] dataBinary, 
+			out byte[] sign)
+		{
+			EUMarshal dataPtr = null;
+			EUMarshal signPtr = null;
+
+			sign = null;
+
+			try
+			{
+				int error;
+				dataPtr = new EUMarshal();
+
+				if (dataString != null)
+					dataPtr = new EUMarshal(dataString, false);
+				else if(dataBinary != null)
+					dataPtr = new EUMarshal(dataBinary);
+
+				signPtr = new EUMarshal(
+					true, privateKeyContext);
+
+				error = (int)EUCtxRawSignData(privateKeyContext,
+					dataPtr.DataPtr, dataPtr.DataLength,
+					signPtr.DataPtr, signPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				sign = signPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (dataPtr != null)
+					dataPtr.Dispose();
+				if (signPtr != null)
+					signPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
 		private static int _CtxIsAlreadySigned(
 			IntPtr privateKeyContext, int signAlgo,
 			string signString, byte[] signBinary,
@@ -17542,6 +18059,62 @@ __END_MONO_CODE__*/
 			return EU_ERROR_NONE;
 		}
 
+		private static int _CtxCreateSignerEx(
+			IntPtr privateKeyContext, int signAlgo,
+			string hashString, byte[] hashBinary,
+			bool noContentTimeStamp, int signType,
+			out byte[] signer)
+		{
+			EUMarshal hashPtr = null;
+			EUMarshal signerPtr = null;
+
+			signer = null;
+
+			try
+			{
+				int error;
+
+				if (hashString != null)
+				{
+					error = BASE64Decode(hashString,
+						out hashBinary);
+					if (error != EU_ERROR_NONE)
+						return error;
+				}
+
+				hashPtr = new EUMarshal(hashBinary);
+				signerPtr = new EUMarshal(true, privateKeyContext);
+
+				error = (int)EUCtxCreateSignerEx(
+					privateKeyContext, (DWORD)signAlgo,
+					hashPtr.DataPtr, hashPtr.DataLength,
+					noContentTimeStamp ? 1 : 0, (DWORD) signType,
+					signerPtr.DataPtr,
+					signerPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				signer = signerPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (hashPtr != null)
+					hashPtr.Dispose();
+				if (signerPtr != null)
+					signerPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
 		private static int _CtxAppendSigner(
 			IntPtr context, int signAlgo,
 			string signerString, byte[] signerBinary,
@@ -17724,6 +18297,209 @@ __END_MONO_CODE__*/
 					fileNameWithPreviousSignPtr.Dispose();
 				if (fileNameWithSignPtr != null)
 					fileNameWithSignPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static void _CtxFreeCoupleSign(IntPtr signContext)
+		{
+			try
+			{
+				EUCtxFreeCoupleSign(signContext);
+			}
+			catch (Exception)
+			{
+			}
+		}
+
+		private static int _CtxClientCreateCoupleSignStep1(
+			IntPtr privateKeyContext, int signAlgo,
+			out byte[] clientData, out IntPtr signContext)
+		{
+			EUMarshal clientDataPtr = null;
+			EUMarshal signContextPtr = null;
+
+			clientData = null;
+			signContext = IntPtr.Zero;
+
+			try
+			{
+				int error;
+				clientDataPtr = new EUMarshal(
+					true, privateKeyContext);
+				signContextPtr = new EUMarshal(
+					Marshal.SizeOf(typeof(IntPtr)));
+
+				error = (int)EUCtxClientCreateCoupleSignStep1(
+					privateKeyContext, (DWORD) signAlgo,
+					clientDataPtr.DataPtr,
+					clientDataPtr.BinaryDataLengthPtr,
+					signContextPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				clientData = clientDataPtr.GetBinaryData();
+				signContext = signContextPtr.GetPointerData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (clientDataPtr != null)
+					clientDataPtr.Dispose();
+				if (signContextPtr != null)
+					signContextPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _CtxServerCreateCoupleSignStep1(
+			IntPtr privateKeyContext, int signAlgo, byte[] hash,
+			byte[] clientData, out byte[] serverData, out IntPtr signContext)
+		{
+			EUMarshal hashPtr = null;
+			EUMarshal clientDataPtr = null;
+			EUMarshal serverDataPtr = null;
+			EUMarshal signContextPtr = null;
+
+			serverData = null;
+			signContext = IntPtr.Zero;
+
+			try
+			{
+				int error;
+				hashPtr = new EUMarshal(hash);
+				clientDataPtr = new EUMarshal(clientData);
+				serverDataPtr = new EUMarshal(
+					true, privateKeyContext);
+				signContextPtr = new EUMarshal(
+					Marshal.SizeOf(typeof(IntPtr)));
+
+				error = (int)EUCtxServerCreateCoupleSignStep1(
+					privateKeyContext, (DWORD)signAlgo,
+					hashPtr.DataPtr, hashPtr.DataLength,
+					clientDataPtr.DataPtr, clientDataPtr.DataLength,
+					serverDataPtr.DataPtr, 
+					serverDataPtr.BinaryDataLengthPtr,
+					signContextPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				serverData = serverDataPtr.GetBinaryData();
+				signContext = signContextPtr.GetPointerData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (hashPtr != null)
+					hashPtr.Dispose();
+				if (clientDataPtr != null)
+					clientDataPtr.Dispose();
+				if (serverDataPtr != null)
+					serverDataPtr.Dispose();
+				if (signContextPtr != null)
+					signContextPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _CtxClientCreateCoupleSignStep2(
+			IntPtr signContext, byte[] serverData, out byte[] clientData)
+		{
+			EUMarshal serverDataPtr = null;
+			EUMarshal clientDataPtr = null;
+
+			clientData = null;
+
+			try
+			{
+				int error;
+				serverDataPtr = new EUMarshal(serverData);
+				clientDataPtr = new EUMarshal(true, signContext);
+
+				error = (int)EUCtxClientCreateCoupleSignStep2(
+					signContext, serverDataPtr.DataPtr, 
+					serverDataPtr.DataLength,
+					clientDataPtr.DataPtr,
+					clientDataPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				clientData = clientDataPtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (serverDataPtr != null)
+					serverDataPtr.Dispose();
+				if (clientDataPtr != null)
+					clientDataPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _CtxServerCreateCoupleSignStep2(
+			IntPtr signContext, byte[] clientData, out byte[] signValue)
+		{
+			EUMarshal clientDataPtr = null;
+			EUMarshal signValuePtr = null;
+
+			signValue = null;
+
+			try
+			{
+				int error;
+				clientDataPtr = new EUMarshal(clientData);
+				signValuePtr = new EUMarshal(true, signContext);
+
+				error = (int)EUCtxServerCreateCoupleSignStep2(
+					signContext, clientDataPtr.DataPtr, 
+					clientDataPtr.DataLength,
+					signValuePtr.DataPtr,
+					signValuePtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				signValue = signValuePtr.GetBinaryData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (clientDataPtr != null)
+					clientDataPtr.Dispose();
+				if (signValuePtr != null)
+					signValuePtr.Dispose();
 			}
 
 			return EU_ERROR_NONE;
@@ -24043,6 +24819,517 @@ __END_MONO_CODE__*/
 			return EU_ERROR_NONE;
 		}
 
+		private static int _DevCtxOpenIDCardEx(
+			string typeDescription, string deviceDescription,
+			string password, int passwordType,
+			int passwordVersion, int terminalType,
+			out IntPtr deviceContext)
+		{
+			EUMarshal typeDescriptionPtr = null;
+			EUMarshal deviceDescriptionPtr = null;
+			EUMarshal passwordPtr = null;
+			EUMarshal deviceContextPtr = null;
+
+			deviceContext = IntPtr.Zero;
+
+			try
+			{
+				int error;
+				typeDescriptionPtr = new EUMarshal(typeDescription);
+				deviceDescriptionPtr = new EUMarshal(deviceDescription);
+				passwordPtr = new EUMarshal(password);
+				deviceContextPtr = new EUMarshal(
+					Marshal.SizeOf(typeof(IntPtr)));
+
+				error = (int)EUDevCtxOpenIDCardEx(
+					typeDescriptionPtr.DataPtr,
+					deviceDescriptionPtr.DataPtr,
+					passwordPtr.DataPtr,
+					(DWORD)passwordType,
+					(DWORD)passwordVersion,
+					(DWORD)terminalType,
+					deviceContextPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				deviceContext = deviceContextPtr.GetPointerData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (typeDescriptionPtr != null)
+					typeDescriptionPtr.Dispose();
+				if (deviceDescriptionPtr != null)
+					deviceDescriptionPtr.Dispose();
+				if (passwordPtr != null)
+					passwordPtr.Dispose();
+				if (deviceContextPtr != null)
+					deviceContextPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _DevCtxActivateIDCardESign(
+			IntPtr deviceContext)
+		{
+			try
+			{
+				int error;
+
+				error = (int)EUDevCtxActivateIDCardESign(
+					deviceContext);
+				if (error != EU_ERROR_NONE)
+					return error;
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _DevCtxGetIDCardVersion(
+			IntPtr deviceContext, out int version)
+		{
+			EUMarshal versionPtr = null;
+			version = 0;
+
+			try
+			{
+				int error;
+				versionPtr = new EUMarshal(EUMarshal.DWORD_SIZE);
+
+				error = (int)EUDevCtxGetIDCardVersion(
+					deviceContext, versionPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				version = versionPtr.GetDWORDData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _DevCtxGetIDCardVersionFromDevice(
+			string typeDescription, string deviceDescription,
+			out int version)
+		{
+			EUMarshal typeDescriptionPtr = null;
+			EUMarshal deviceDescriptionPtr = null;
+			EUMarshal versionPtr = null;
+			version = 0;
+
+			try
+			{
+				int error;
+				typeDescriptionPtr = new EUMarshal(typeDescription);
+				deviceDescriptionPtr = new EUMarshal(deviceDescription);
+				versionPtr = new EUMarshal(EUMarshal.DWORD_SIZE);
+
+				error = (int)EUDevCtxGetIDCardVersionFromDevice(
+					typeDescriptionPtr.DataPtr,
+					deviceDescriptionPtr.DataPtr,
+					versionPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				version = versionPtr.GetDWORDData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (typeDescriptionPtr != null)
+					typeDescriptionPtr.Dispose();
+				if (deviceDescriptionPtr != null)
+					deviceDescriptionPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		#endregion
+
+		#region EUSignCP: SServer functions
+
+		private static int _SServerClientSignHashAsync(
+			string serverAddress, string serverPort, string clientID,
+			string originatorDescription, string hashDescription,
+			string hashString, byte[] hashBinary, string signAlgorithmName, 
+			out string operationID)
+		{
+			EUMarshal serverAddressPtr = null;
+			EUMarshal serverPortPtr = null;
+			EUMarshal clientIDPtr = null;
+			EUMarshal originatorDescriptionPtr = null;
+			EUMarshal hashDescriptionPtr = null;
+			EUMarshal hashStringPtr = null;
+			EUMarshal hashBinaryPtr = null;
+			EUMarshal signAlgorithmNamePtr = null;
+			EUMarshal operationIDPtr = null;
+
+			operationID = null;
+
+			try
+			{
+				int error;
+
+				serverAddressPtr = new EUMarshal(serverAddress);
+				serverPortPtr = new EUMarshal(serverPort);
+				clientIDPtr = new EUMarshal(clientID);
+				originatorDescriptionPtr = new EUMarshal();
+				hashDescriptionPtr = new EUMarshal();
+				hashStringPtr = new EUMarshal();
+				hashBinaryPtr = new EUMarshal();
+				signAlgorithmNamePtr = new EUMarshal(signAlgorithmName);
+				operationIDPtr = new EUMarshal(false);
+
+				if (originatorDescription != null)
+				{
+					originatorDescriptionPtr = 
+						new EUMarshal(originatorDescription);
+				}
+
+				if (hashDescription != null)
+				{
+					hashDescriptionPtr =
+						new EUMarshal(hashDescription);
+				}
+
+				if (hashString != null)
+					hashStringPtr = new EUMarshal(hashString);
+				else if (hashBinary != null)
+					hashBinaryPtr = new EUMarshal(hashBinary);
+
+				error = (int)EUSServerClientSignHashAsync(
+					serverAddressPtr.DataPtr, serverPortPtr.DataPtr,
+					clientIDPtr.DataPtr, originatorDescriptionPtr.DataPtr,
+					hashDescriptionPtr.DataPtr, hashStringPtr.DataPtr, 
+					hashBinaryPtr.DataPtr, hashBinaryPtr.DataLength,
+					signAlgorithmNamePtr.DataPtr, operationIDPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				operationID = operationIDPtr.GetStringData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (serverAddressPtr != null)
+					serverAddressPtr.Dispose();
+				if (serverPortPtr != null)
+					serverPortPtr.Dispose();
+				if (clientIDPtr != null)
+					clientIDPtr.Dispose();
+				if (originatorDescriptionPtr != null)
+					originatorDescriptionPtr.Dispose();
+				if (hashDescriptionPtr != null)
+					hashDescriptionPtr.Dispose();
+				if (hashStringPtr != null)
+					hashStringPtr.Dispose();
+				if (hashBinaryPtr != null)
+					hashBinaryPtr.Dispose();
+				if (signAlgorithmNamePtr != null)
+					signAlgorithmNamePtr.Dispose();
+				if (operationIDPtr != null)
+					operationIDPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _SServerClientCheckSignHashStatus(
+			string serverAddress, string serverPort, string clientID,
+			string operationID, ref string signString, ref byte[] signBinary)
+		{
+			EUMarshal serverAddressPtr = null;
+			EUMarshal serverPortPtr = null;
+			EUMarshal clientIDPtr = null;
+			EUMarshal operationIDPtr = null;
+			EUMarshal signStringPtr = null;
+			EUMarshal signBinaryPtr = null;
+
+			try
+			{
+				int error;
+
+				serverAddressPtr = new EUMarshal(serverAddress);
+				serverPortPtr = new EUMarshal(serverPort);
+				clientIDPtr = new EUMarshal(clientID);
+				operationIDPtr = new EUMarshal(operationID);
+				signStringPtr = new EUMarshal();
+				signBinaryPtr = new EUMarshal();
+
+				if (signString != null)
+					signStringPtr = new EUMarshal(false);
+				else if (signBinary != null)
+					signBinaryPtr = new EUMarshal(true);
+
+				error = (int) EUSServerClientCheckSignHashStatus(
+					serverAddressPtr.DataPtr, serverPortPtr.DataPtr,
+					clientIDPtr.DataPtr, operationIDPtr.DataPtr,
+					signStringPtr.DataPtr, signBinaryPtr.DataPtr,
+					signBinaryPtr.BinaryDataLengthPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				if (signString != null)
+				{
+					signString = !signStringPtr.IsEmpty() ?
+						signStringPtr.GetStringData() : null;
+				}
+				else if (signBinary != null)
+				{
+					signBinary = !signBinaryPtr.IsEmpty() ? 
+						signBinaryPtr.GetBinaryData() : null;
+				}
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (serverAddressPtr != null)
+					serverAddressPtr.Dispose();
+				if (serverPortPtr != null)
+					serverPortPtr.Dispose();
+				if (clientIDPtr != null)
+					clientIDPtr.Dispose();
+				if (operationIDPtr != null)
+					operationIDPtr.Dispose();
+				if (signStringPtr != null)
+					signStringPtr.Dispose();
+				if (signBinaryPtr != null)
+					signBinaryPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _SServerClientSignHashesAsync(
+			string serverAddress, string serverPort, string clientID,
+			string originatorDescription, string operationDescription, 
+			string[] hashesDescription, string[] hashesString, byte[][] hashesBinary,
+			string signAlgorithmName, out string operationID)
+		{
+			EUMarshal serverAddressPtr = null;
+			EUMarshal serverPortPtr = null;
+			EUMarshal clientIDPtr = null;
+			EUMarshal originatorDescriptionPtr = null;
+			EUMarshal operationDescriptionPtr = null;
+			EUMarshal hashesDescriptionPtr = null;
+			EUMarshal hashesStringPtr = null;
+			IntPtr intHashesBinary = IntPtr.Zero;
+			IntPtr intHashesBinaryLength = IntPtr.Zero;
+			EUMarshal signAlgorithmNamePtr = null;
+			EUMarshal operationIDPtr = null;
+
+			operationID = null;
+
+			try
+			{
+				int error;
+
+				serverAddressPtr = new EUMarshal(serverAddress);
+				serverPortPtr = new EUMarshal(serverPort);
+				clientIDPtr = new EUMarshal(clientID);
+				originatorDescriptionPtr = new EUMarshal();
+				operationDescriptionPtr = new EUMarshal();
+				hashesDescriptionPtr = new EUMarshal();
+				hashesStringPtr = new EUMarshal();
+				signAlgorithmNamePtr = new EUMarshal(signAlgorithmName);
+				operationIDPtr = new EUMarshal(false);
+
+				if (originatorDescription != null)
+				{
+					originatorDescriptionPtr =
+						new EUMarshal(originatorDescription);
+				}
+
+				if (operationDescription != null)
+				{
+					operationDescriptionPtr =
+						new EUMarshal(operationDescription);
+				}
+
+				if (hashesDescription != null)
+				{
+					hashesDescriptionPtr = new EUMarshal(hashesDescription);
+				}
+
+				if (hashesString != null)
+				{
+					hashesStringPtr = new EUMarshal(hashesString);
+				}
+				else if (hashesBinary != null)
+				{
+					EUMarshal.CopyArraysOfBytesToIntPtr(hashesBinary,
+						ref intHashesBinary, ref intHashesBinaryLength);
+				}
+
+				error = (int)EUSServerClientSignHashesAsync(
+					serverAddressPtr.DataPtr, serverPortPtr.DataPtr,
+					clientIDPtr.DataPtr, originatorDescriptionPtr.DataPtr,
+					operationDescriptionPtr.DataPtr, hashesDescriptionPtr.DataPtr,
+					hashesStringPtr.DataPtr, 
+					hashesBinary != null ? (DWORD) hashesBinary.Length : (DWORD) 0, 
+					intHashesBinary, intHashesBinaryLength,
+					signAlgorithmNamePtr.DataPtr, operationIDPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				operationID = operationIDPtr.GetStringData();
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (serverAddressPtr != null)
+					serverAddressPtr.Dispose();
+				if (serverPortPtr != null)
+					serverPortPtr.Dispose();
+				if (clientIDPtr != null)
+					clientIDPtr.Dispose();
+				if (originatorDescriptionPtr != null)
+					originatorDescriptionPtr.Dispose();
+				if (operationDescriptionPtr != null)
+					operationDescriptionPtr.Dispose();
+				if (hashesDescriptionPtr != null)
+					hashesDescriptionPtr.Dispose();
+				if (hashesStringPtr != null)
+					hashesStringPtr.Dispose();
+				if (hashesBinary != null)
+				{
+					EUMarshal.FreeArraysOfBytesInIntPtr(hashesBinary.Length,
+						intHashesBinary, intHashesBinaryLength);
+				}
+				if (signAlgorithmNamePtr != null)
+					signAlgorithmNamePtr.Dispose();
+				if (operationIDPtr != null)
+					operationIDPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
+		private static int _SServerClientCheckSignHashesStatus(
+			string serverAddress, string serverPort, string clientID,
+			string operationID, out EU_SS_SIGN_HASH_RESULT[] results)
+		{
+			EUMarshal serverAddressPtr = null;
+			EUMarshal serverPortPtr = null;
+			EUMarshal clientIDPtr = null;
+			EUMarshal operationIDPtr = null;
+			EUMarshal resultsPtr = null;
+			EUMarshal resultsCountPtr = null;
+
+			results = new EU_SS_SIGN_HASH_RESULT[0];
+
+			try
+			{
+				int error;
+
+				serverAddressPtr = new EUMarshal(serverAddress);
+				serverPortPtr = new EUMarshal(serverPort);
+				clientIDPtr = new EUMarshal(clientID);
+				operationIDPtr = new EUMarshal(operationID);
+				resultsPtr = new EUMarshal(
+					Marshal.SizeOf(typeof(IntPtr)));
+				resultsCountPtr = new EUMarshal(
+					Marshal.SizeOf(typeof(DWORD)));
+
+				Marshal.WriteIntPtr(resultsPtr.DataPtr,
+					IntPtr.Zero);
+
+				error = (int)EUSServerClientCheckSignHashesStatus(
+					serverAddressPtr.DataPtr, serverPortPtr.DataPtr,
+					clientIDPtr.DataPtr, operationIDPtr.DataPtr,
+					resultsPtr.DataPtr, resultsCountPtr.DataPtr);
+				if (error != EU_ERROR_NONE)
+					return error;
+
+				results = !resultsPtr.IsEmpty() ? 
+					resultsPtr.GetSSSignHashResults(
+					resultsCountPtr.GetDWORDData()) : null;
+			}
+			catch (EUSignCPException ex)
+			{
+				return ex.errorCode;
+			}
+			catch (Exception)
+			{
+				return EU_ERROR_UNKNOWN;
+			}
+			finally
+			{
+				if (serverAddressPtr != null)
+					serverAddressPtr.Dispose();
+				if (serverPortPtr != null)
+					serverPortPtr.Dispose();
+				if (clientIDPtr != null)
+					clientIDPtr.Dispose();
+				if (operationIDPtr != null)
+					operationIDPtr.Dispose();
+				if (resultsPtr != null)
+					resultsPtr.Dispose();
+				if (resultsCountPtr != null)
+					resultsCountPtr.Dispose();
+			}
+
+			return EU_ERROR_NONE;
+		}
+
 		#endregion
 
 		#endregion
@@ -25270,6 +26557,35 @@ __END_MONO_CODE__*/
 			int error;
 
 			error = _CheckTSP(tsp, hashAlgo, null, hash);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CreateCoupleCRBegin(
+			byte[] clientRequest, byte[] serverRequest,
+			out byte[] request, out byte[] hashAttrs)
+		{
+			int error;
+
+			error = _CreateCoupleCRBegin(
+				clientRequest, serverRequest, 
+				out request, out hashAttrs);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CreateCREnd(
+			byte[] unsignedRequest, byte[] signature,
+			out byte[] request)
+		{
+			int error;
+
+			error = _CreateCREnd(
+				unsignedRequest, signature, out request);
 			if (error != EU_ERROR_NONE)
 				RaiseError(error);
 
@@ -29092,6 +30408,39 @@ __END_MONO_CODE__*/
 			return error;
 		}
 
+		public static int CreateSignerEx(string hash,
+			bool noContentTimeStamp, int signType, out string signer)
+		{
+			int error;
+			byte[] signerBinary = null;
+
+			signer = "";
+
+			error = _CreateSignerEx(hash, null,
+				noContentTimeStamp, signType,
+				ref signer, ref signerBinary);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CreateSignerEx(byte[] hash,
+			bool noContentTimeStamp, int signType, out byte[] signer)
+		{
+			int error;
+			string signerString = null;
+			signer = new byte[0];
+
+			error = _CreateSignerEx(null, hash,
+				noContentTimeStamp, signType,
+				ref signerString, ref signer);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
 		public static int AppendSigner(
 			string signerString, byte[] signerBinary, byte[] certificate,
 			string previousSignString, byte[] previousSignBinary,
@@ -29886,6 +31235,123 @@ __END_MONO_CODE__*/
 			return error;
 		}
 
+		public static int CtxRawSignHash(
+			IntPtr privateKeyContext,
+			byte[] hash, out byte[] sign)
+		{
+			int error;
+
+			error = _CtxRawSignHash(privateKeyContext,
+				null, hash, out sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxRawSignHash(
+			IntPtr privateKeyContext,
+			string hash, out string sign)
+		{
+			int error;
+			byte[] signBinary;
+
+			sign = null;
+
+			error = _CtxRawSignHash(privateKeyContext,
+				hash, null, out signBinary);
+			if (error != EU_ERROR_NONE)
+			{
+				RaiseError(error);
+
+				return error;
+			}
+
+			error = BASE64Encode(signBinary, out sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxRawSignData(
+			IntPtr privateKeyContext,
+			string data, out byte[] sign)
+		{
+			int error;
+
+			error = _CtxRawSignData(privateKeyContext,
+				data, null, out sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxRawSignData(
+			IntPtr privateKeyContext,
+			string data, out string sign)
+		{
+			int error;
+			byte[] signBinary;
+
+			sign = null;
+
+			error = _CtxRawSignData(privateKeyContext,
+				data, null, out signBinary);
+			if (error != EU_ERROR_NONE)
+			{
+				RaiseError(error);
+
+				return error;
+			}
+
+			error = BASE64Encode(signBinary, out sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxRawSignData(
+			IntPtr privateKeyContext,
+			byte[] data, out byte[] sign)
+		{
+			int error;
+
+			error = _CtxRawSignData(privateKeyContext,
+				null, data, out sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxRawSignData(
+			IntPtr privateKeyContext,
+			byte[] data, out string sign)
+		{
+			int error;
+			byte[] signBinary;
+
+			sign = null;
+
+			error = _CtxRawSignData(privateKeyContext,
+				null, data, out signBinary);
+			if (error != EU_ERROR_NONE)
+			{
+				RaiseError(error);
+
+				return error;
+			}
+
+			error = BASE64Encode(signBinary, out sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
 		public static int CtxIsAlreadySigned(
 			IntPtr privateKeyContext, int signAlgo,
 			string sign, out bool isAlreadySigned)
@@ -30192,6 +31658,50 @@ __END_MONO_CODE__*/
 			return error;
 		}
 
+		public static int CtxCreateSignerEx(
+			IntPtr privateKeyContext, int signAlgo, string hash,
+			bool noContentTimeStamp, int signType, out string signer)
+		{
+			int error;
+			byte[] signerBinary;
+
+			signer = null;
+
+			error = _CtxCreateSignerEx(privateKeyContext,
+				signAlgo, hash, null, noContentTimeStamp, 
+				signType, out signerBinary);
+			if (error != EU_ERROR_NONE)
+			{
+				RaiseError(error);
+
+				return error;
+			}
+
+			error = BASE64Encode(signerBinary, out signer);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxCreateSignerEx(
+			IntPtr privateKeyContext, int signAlgo, byte[] hash,
+			bool noContentTimeStamp, int signType, out byte[] signer)
+		{
+			int error;
+
+			signer = null;
+
+			error = _CtxCreateSignerEx(privateKeyContext,
+				signAlgo, null, hash, noContentTimeStamp,
+				signType, out signer);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+
 		public static int CtxAppendSigner(
 			IntPtr context, int signAlgo,
 			string signer, byte[] certificate,
@@ -30278,6 +31788,68 @@ __END_MONO_CODE__*/
 			error = _CtxAppendSignerFile(context,
 				signAlgo, signer, null, certificate,
 				fileNameWithPreviousSign, fileNameWithSign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+
+		public static void CtxFreeCoupleSign(IntPtr signContext)
+		{
+			_CtxFreeCoupleSign(signContext);
+		}
+
+		public static int CtxClientCreateCoupleSignStep1(
+			IntPtr privateKeyContext, int signAlgo,
+			out byte[] clientData, out IntPtr signContext)
+		{
+			int error;
+
+			error = _CtxClientCreateCoupleSignStep1(
+				privateKeyContext, signAlgo, 
+				out clientData, out signContext);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxServerCreateCoupleSignStep1(
+			IntPtr privateKeyContext, int signAlgo, byte[] hash,
+			byte[] clientData, out byte[] serverData, out IntPtr signContext)
+		{
+			int error;
+
+			error = _CtxServerCreateCoupleSignStep1(
+				privateKeyContext, signAlgo, hash, clientData,
+				out serverData, out signContext);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxClientCreateCoupleSignStep2(
+			IntPtr signContext, byte[] serverData, out byte[] clientData)
+		{
+			int error;
+
+			error = _CtxClientCreateCoupleSignStep2(
+				signContext, serverData, out clientData);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int CtxServerCreateCoupleSignStep2(
+			IntPtr signContext, byte[] clientData, out byte[] signValue)
+		{
+			int error;
+
+			error = _CtxServerCreateCoupleSignStep2(
+				signContext, clientData, out signValue);
 			if (error != EU_ERROR_NONE)
 				RaiseError(error);
 
@@ -33678,6 +35250,190 @@ __END_MONO_CODE__*/
 			error = _DevCtxInternalAuthenticateIDCard(
 				deviceContext, CVCerts,
 				privateKey, password);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int DevCtxOpenIDCardEx(
+			string typeDescription, string deviceDescription,
+			string password, int passwordType,
+			int passwordVersion, int terminalType,
+			out IntPtr deviceContext)
+		{
+			int error;
+
+			error = _DevCtxOpenIDCardEx(
+				typeDescription, deviceDescription,
+				password, passwordType,
+				passwordVersion, terminalType,
+				out deviceContext);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int DevCtxActivateIDCardESign(
+			IntPtr deviceContext)
+		{
+			int error;
+
+			error = _DevCtxActivateIDCardESign(
+				deviceContext);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int DevCtxGetIDCardVersion(
+			IntPtr deviceContext, out int version)
+		{
+			int error;
+
+			error = _DevCtxGetIDCardVersion(
+				deviceContext, out version);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int DevCtxGetIDCardVersionFromDevice(
+			string typeDescription, string deviceDescription,
+			out int version)
+		{
+			int error;
+
+			error = _DevCtxGetIDCardVersionFromDevice(
+				typeDescription, deviceDescription,
+				out version);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		#endregion
+
+		#region EUSignCP: SServer functions
+
+		public static int SServerClientSignHashAsync(
+			string serverAddress, string serverPort, string clientID,
+			string originatorDescription, string hashDescription,
+			string hash, string signAlgorithmName,
+			out string operationID)
+		{
+			int error;
+
+			error = _SServerClientSignHashAsync(serverAddress, serverPort, 
+				clientID, originatorDescription, hashDescription, hash, null, 
+				signAlgorithmName, out operationID);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int SServerClientSignHashAsync(
+			string serverAddress, string serverPort, string clientID,
+			string originatorDescription, string hashDescription,
+			byte[] hash, string signAlgorithmName,
+			out string operationID)
+		{
+			int error;
+
+			error = _SServerClientSignHashAsync(serverAddress, serverPort,
+				clientID, originatorDescription, hashDescription, null, hash,
+				signAlgorithmName, out operationID);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int SServerClientCheckSignHashStatus(
+			string serverAddress, string serverPort, string clientID,
+			string operationID, out string sign)
+		{
+			int error;
+
+			byte[] signBinary = null;
+
+			sign = "";
+
+			error = _SServerClientCheckSignHashStatus(serverAddress, serverPort,
+				clientID, operationID, ref sign, ref signBinary);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int SServerClientCheckSignHashStatus(
+			string serverAddress, string serverPort, string clientID,
+			string operationID, out byte[] sign)
+		{
+			int error;
+
+			string signString = null;
+
+			sign = new byte[0];
+
+			error = _SServerClientCheckSignHashStatus(serverAddress, serverPort,
+				clientID, operationID, ref signString, ref sign);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int SServerClientSignHashesAsync(
+			string serverAddress, string serverPort, string clientID,
+			string originatorDescription, string operationDescription,
+			string[] hashesDescription, string[] hashes,
+			string signAlgorithmName, out string operationID)
+		{
+			int error;
+
+			error = _SServerClientSignHashesAsync(serverAddress, serverPort,
+				clientID, originatorDescription, operationDescription, 
+				hashesDescription, hashes, null,
+				signAlgorithmName, out operationID);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int SServerClientSignHashesAsync(
+			string serverAddress, string serverPort, string clientID,
+			string originatorDescription, string operationDescription,
+			string[] hashesDescription, byte[][] hashes,
+			string signAlgorithmName, out string operationID)
+		{
+			int error;
+
+			error = _SServerClientSignHashesAsync(serverAddress, serverPort,
+				clientID, originatorDescription, operationDescription,
+				hashesDescription, null, hashes,
+				signAlgorithmName, out operationID);
+			if (error != EU_ERROR_NONE)
+				RaiseError(error);
+
+			return error;
+		}
+
+		public static int SServerClientCheckSignHashesStatus(
+			string serverAddress, string serverPort, string clientID,
+			string operationID, out EU_SS_SIGN_HASH_RESULT[] results)
+		{
+			int error;
+
+			error = _SServerClientCheckSignHashesStatus(serverAddress, serverPort,
+				clientID, operationID, out results);
 			if (error != EU_ERROR_NONE)
 				RaiseError(error);
 
