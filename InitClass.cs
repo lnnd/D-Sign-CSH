@@ -8,16 +8,23 @@ namespace D_Sign
 {
     public class InitClass
     {
-        public int Init(String mainFolderPath, bool offline)
+
+        //public static void Main(string[] args)
+        //{
+
+        //}
+
+        public string Init(String mainFolderPath, bool offline)
         {
+            string desc = default;
 
             ВasicSettings.checkMainFolder(mainFolderPath);
-            ВasicSettings.SetSetting(offline);
+            desc = ВasicSettings.SetSetting(offline);
 
             
              
 
-            return 0;
+            return desc;
         }
 
         

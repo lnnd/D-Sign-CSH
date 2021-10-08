@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
+
 namespace D_Sign
 {
     class ВasicSettings
@@ -49,9 +50,17 @@ namespace D_Sign
 
         }
 
-        public static int SetSetting(bool offlineMode)
-        {
-            IEUSignCP.SetUIMode(false);
+        public static string SetSetting(bool offlineMode)
+        {            
+            string description = default;
+
+            IEUSignCP.SetUIMode(true);
+
+            int err = IEUSignCP.Initialize();
+            description = IEUSignCP.GetErrorDesc(err);
+            if (err != 0)
+                return description;
+
             IEUSignCP.SetModeSettings(offlineMode);
 
             // Proxy
@@ -72,7 +81,7 @@ namespace D_Sign
             bool autoDownloadCRLs = true;   // Признак необхідності автоматичного завантаження СВС
             bool saveLoadedCerts = true;    // Признак необхідності автоматичного збереження сертифікатів отриманих з LDAP-сервера чи за протоколом OCSP у файлове сховище
             int expireTime = 0;             // Час зберігання стану перевіреного сертифіката
-            IEUSignCP.SetFileStoreSettings(mainFolderPath, checkCRLs, autoRefresh, ownCRLsOnly, fullAndDeltaCRLs, autoDownloadCRLs, saveLoadedCerts, expireTime);
+            IEUSignCP.SetFileStoreSettings(certFolderPath, checkCRLs, autoRefresh, ownCRLsOnly, fullAndDeltaCRLs, autoDownloadCRLs, saveLoadedCerts, expireTime);
 
             // CMP
             bool useCMP = true;
@@ -86,13 +95,31 @@ namespace D_Sign
             string addressTCP = "http://acsk.privatbank.ua/services/tsp/";
             string portTCP = "80";
             IEUSignCP.SetTSPSettings(getStamps, addressTCP, portTCP);
+
+            // OCSP
+            bool useOCSP = true;
+            bool beforeStore = false; // Признак черговості перевірки статусу 
+            string addressOCSP = "http://acsk.privatbank.ua/services/ocsp/";
+            string portOCSP = "80";
+            IEUSignCP.SetOCSPSettings(useOCSP, beforeStore, addressOCSP, portOCSP);
+
+            // LDAP
+            bool useLDAP = false;
+            string addressLDAP = "";
+            string portLDAP = "";
+            bool anonymousLDAP = true;
+            string userLDAP = "";
+            string passwordLDAP = "";
+            IEUSignCP.SetLDAPSettings(useLDAP, addressLDAP, portLDAP, anonymousLDAP, userLDAP, passwordLDAP);
+
+            IEUSignCP.SetSettings();
+
             
-            IEUSignCP.Initialize();
 
 
+            
 
-
-            return 0;
+            return description;
 
         }
     }
